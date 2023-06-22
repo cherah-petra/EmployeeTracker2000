@@ -26,8 +26,8 @@ File can used and shared for knowledge or expansion, as needed.
 
 ## License
 
-- GitHub repository URL: https://github.com/cherah-petra/CP-Code-Quiz-C04
-- GitHub Page: https://cherah-petra.github.io/CP-Code-Quiz-C04/
+- GitHub repository URL: https://github.com/cherah-petra/EmployeeTracker2000
+- Video: https://drive.google.com/file/d/1xiO5ieJIx7t6jK9XwINnwaSp8RNInHll/view
 
 
 
