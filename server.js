@@ -23,17 +23,9 @@ db.connect(function (err) {
   begin();
 });
 
-// view all departments
-// view all resolve
-// view all employees
-// add a department
-// add a role
-// add an employee
-// update an employee role
-
-// Start the application
 
 function begin() {
+   
   inquirer
     .prompt([
       {
@@ -48,7 +40,8 @@ function begin() {
           "View existing roles",
           "View all employees",
           "Change the role for an existing employee",
-          "Quit",
+          "Update an employee's manager",
+          "Quit"
         ],
       },
     ])
@@ -75,6 +68,9 @@ function begin() {
         case "Change the role for an existing employee":
           changeEmployeeRole();
           break;
+        case "Update an employee's manager":
+            changeEmployeeManager();
+            break;
         case "Quit the application":
           console.log("Goodbye!");
           connection.end();
@@ -165,6 +161,8 @@ function addEmployee() {
       value: id,
     }));
 
+    employeeChoices.push( {name: "No Manager", value: null});
+
     // Fetch all roles from the database
     db.query("SELECT * FROM employeeRole", function (err, rows) {
       if (err) throw err;
@@ -237,41 +235,126 @@ function viewRoles() {
 }
 
 function viewEmployees() {
-  let query = "SELECT * FROM employee";
-  db.query(query, function (err, res) {
-    if (err) throw err;
-    console.table(res);
-    begin();
-  });
-}
+    let query = `
+      SELECT 
+        e.id,
+        e.first_name,
+        e.last_name,
+        r.title,
+        r.salary,
+        CONCAT(m.first_name, ' ', m.last_name) AS manager
+      FROM 
+        employee AS e
+      INNER JOIN 
+        employeeRole AS r ON e.employeeRole_id = r.id
+      LEFT JOIN 
+        employee AS m ON e.manager_id = m.id`;
+  
+    db.query(query, function (err, res) {
+      if (err) throw err;
+      console.table(res);
+      begin();
+    });
+  }
+  
 
 function changeEmployeeRole() {
-  inquirer
-    .prompt([
-      {
-        type: "input",
-        message: "Which employee would you like to make changes to?",
-        name: "first_name",
-      },
-
-      {
-        type: "input",
-        message: "What is the new role?",
-        name: "title",
-      },
-    ])
-    .then(function (answer) {
-      db.query(
-        "UPDATE employee SET title=? WHERE first_name=?",
-        [answer.title, answer.first_name],
-        function (err, res) {
-          if (err) throw err;
-          console.table(res);
-          begin();
-        }
-      );
+    // Fetch all employees from the database
+    db.query("SELECT id, CONCAT(first_name, ' ', last_name) AS name FROM employee", function (err, rows) {
+      if (err) throw err;
+  
+      const employeeChoices = rows.map(({ id, name }) => ({
+        name: name,
+        value: id,
+      }));
+  
+      // Fetch all roles from the database
+      db.query("SELECT id, title FROM employeeRole", function (err, rows) {
+        if (err) throw err;
+  
+        const roleChoices = rows.map(({ id, title }) => ({
+          name: title,
+          value: id,
+        }));
+  
+        inquirer
+          .prompt([
+            {
+              type: "list",
+              name: "employeeId",
+              message: "Which employee's role do you want to change?",
+              choices: employeeChoices,
+            },
+            {
+              type: "list",
+              name: "roleId",
+              message: "Select the new role for the employee:",
+              choices: roleChoices,
+            },
+          ])
+          .then((answers) => {
+            const { employeeId, roleId } = answers;
+  
+            // Update the employee's role in the database
+            db.query(
+              "UPDATE employee SET employeeRole_id = ? WHERE id = ?",
+              [roleId, employeeId],
+              function (err, res) {
+                if (err) throw err;
+                console.log("Employee role updated successfully!");
+                begin();
+              }
+            );
+          });
+      });
     });
-}
+  }
+  function changeEmployeeManager() {
+    // Fetch all employees from the database
+    db.query("SELECT id, first_name, last_name FROM employee", function (err, rows) {
+      if (err) throw err;
+  
+      const employeeChoices = rows.map(({ id, first_name, last_name }) => ({
+        name: `${first_name} ${last_name}`,
+        value: id,
+      }));
+  
+      const managerChoices = [...employeeChoices, { name: "No Manager", value: null }];
+  
+      inquirer
+        .prompt([
+          {
+            type: "list",
+            name: "employeeId",
+            message: "Which employee's manager do you want to change?",
+            choices: employeeChoices,
+          },
+          {
+            type: "list",
+            name: "newManagerId",
+            message: "Select the new manager for the employee:",
+            choices: managerChoices,
+          },
+        ])
+        .then((answers) => {
+          const { employeeId, newManagerId } = answers;
+  
+          // Update the employee's manager in the database
+          db.query(
+            "UPDATE employee SET manager_id = ? WHERE id = ?",
+            [newManagerId, employeeId],
+            function (err, res) {
+              if (err) throw err;
+              console.log("Employee manager updated successfully!");
+              begin();
+            }
+          );
+        });
+    });
+  }
+  
+    
+  
 
 function quit() {
   db.end();
